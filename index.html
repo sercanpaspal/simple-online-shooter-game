@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jamir.io</title>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <canvas id="game" width="600" height="600"></canvas>
+    <script>
+        var canvas = document.getElementById('game'),
+            ctx = canvas.getContext("2d"),
+            socket = io();
+
+        var playerid;
+        socket.on("id", function(id){
+            playerid = id;
+        });
+
+        var playerImage = new Image(),
+            playerImageLoaded = false;
+        playerImage.onload = function(){
+            playerImageLoaded = true;
+        }
+        playerImage.src = 'client/player.png';
+
+        var bulletImage = new Image(),
+            bulletImageLoaded = false;
+        bulletImage.onload = function(){
+            bulletImageLoaded = true;
+        }
+        bulletImage.src = 'client/bullet.png';
+
+
+
+        var nickname = null;
+        while(nickname==null){
+            nickname = prompt("İsim Gir");
+            if(nickname=="")
+                nickname = null;
+        }
+        socket.emit("nickname", nickname);
+
+        // send keys
+        document.onkeydown = function(event){
+            socket.emit('keyPress', {inputId:event.keyCode, state:true});
+        }
+        document.onkeyup = function(event){
+            socket.emit('keyPress', {inputId:event.keyCode, state:false});
+        }
+        // send mouse
+        document.onmousedown = function(event){
+            socket.emit('keyPress', {inputId:'attack', state:true});
+        }
+        document.onmouseup = function(event){
+            socket.emit('keyPress', {inputId:'attack', state:false});
+        }
+        document.onmousemove = function(event){
+            var x = event.clientX - 180;
+            var y = event.clientY - 180;
+            var angle = Math.atan2(y,x) / Math.PI * 180;
+            socket.emit('keyPress', {inputId:'mouseAngle', state:{x:event.clientX, y:event.clientY}});
+        }
+
+
+
+
+        var renderPlayer = function(name, x, y, w, h, health){
+            if(playerImageLoaded)
+                ctx.drawImage(playerImage, x, y);
+            ctx.beginPath();
+            ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.fillText(name, x, y-2);
+            // health
+            ctx.strokeStyle = "black";
+            ctx.lineWidth   = 1;
+            ctx.rect(x, y-20, 30 / (100 / health), 5);
+            ctx.strokeRect(x, y-20, 30, 5);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+        }
+
+
+        socket.on('positions', function(data){
+            ctx.clearRect(0, 0, 600, 600);
+            data.player.sort(function(a, b){
+                if (a.point < b.point)
+                    return 1;
+                if (a.point > b.point)
+                    return -1;
+                return 0;
+            });
+            for(var i = 0; i < data.player.length;i++){
+                renderPlayer(data.player[i].nickname, data.player[i].x, data.player[i].y, 10, 10, data.player[i].health);
+                ctx.fillStyle = 'black';
+                ctx.fillText(data.player[i].nickname + "       " + data.player[i].point, 500, (i + 1) * 10);
+
+                if(data.player[i].id==playerid){
+                    ctx.font="14px Arial";
+                    if(data.player[i].magazine<1)
+                        ctx.fillText("Reloading...", 500, 485);
+                    ctx.fillText(data.player[i].magazineCapacity + " / " + data.player[i].magazine, 500, 500);
+                }
+            }
+
+            for(var i = 0; i < data.bullet.length;i++){
+                if(bulletImageLoaded)
+                    ctx.drawImage(bulletImage, data.bullet[i].x, data.bullet[i].y);
+            }
+        });
+
+    </script>
+</body>
+</html>
