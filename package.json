@@ -13,8 +13,8 @@
   },
   "keywords": [],
   "dependencies": {
-    "express": "4.15.3",
-    "socket.io": "2.0.1"
+    "express": "4.18.2",
+    "socket.io": "2.5.0"
   },
   "author": "",
   "license": "ISC",
